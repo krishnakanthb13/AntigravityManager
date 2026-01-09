@@ -290,6 +290,9 @@ export class ProxyService {
       const decoder = new TextDecoder();
       let buffer = '';
 
+      const streamId = `chatcmpl-${uuidv4()}`;
+      const created = Math.floor(Date.now() / 1000);
+
       upstreamStream.on('data', (chunk: Buffer) => {
         buffer += decoder.decode(chunk, { stream: true });
         const lines = buffer.split('\n');
@@ -307,22 +310,52 @@ export class ProxyService {
             const candidate = json.candidates?.[0];
             const contentPart = candidate?.content?.parts?.[0];
             const text = contentPart?.text || '';
+            const isThought = contentPart?.thought === true;
 
-            const openAICheck = {
-              id: `chatcmpl-${uuidv4()}`,
-              object: 'chat.completion.chunk',
-              created: Math.floor(Date.now() / 1000),
-              model: model,
-              choices: [
-                {
-                  index: 0,
-                  delta: { content: text },
-                  finish_reason: candidate?.finishReason ? 'stop' : null,
-                },
-              ],
-            };
+            if (isThought && text) {
+              const reasoningChunk = {
+                id: streamId,
+                object: 'chat.completion.chunk',
+                created: created,
+                model: model,
+                choices: [
+                  {
+                    index: 0,
+                    delta: { reasoning_content: text },
+                    finish_reason: null,
+                  },
+                ],
+              };
+              subscriber.next(`data: ${JSON.stringify(reasoningChunk)}\n\n`);
+              continue;
+            }
 
-            subscriber.next(`data: ${JSON.stringify(openAICheck)}\n\n`);
+            if (text || candidate?.finishReason) {
+              const finishReason = candidate?.finishReason
+                ? candidate.finishReason === 'STOP'
+                  ? 'stop'
+                  : candidate.finishReason.toLowerCase()
+                : null;
+
+              const contentChunk = {
+                id: streamId,
+                object: 'chat.completion.chunk',
+                created: created,
+                model: model,
+                choices: [
+                  {
+                    index: 0,
+                    delta: { content: text },
+                    finish_reason: finishReason,
+                  },
+                ],
+              };
+              if (!text && finishReason) {
+                delete contentChunk.choices[0].delta.content;
+              }
+
+              subscriber.next(`data: ${JSON.stringify(contentChunk)}\n\n`);
+            }
 
             if (candidate?.finishReason) {
               subscriber.next('data: [DONE]\n\n');

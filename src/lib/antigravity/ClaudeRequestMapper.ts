@@ -69,9 +69,27 @@ export function transformClaudeRequestIn(
   const allowDummyThought = config.finalModel.startsWith('gemini-');
 
   // 4. Generation Config & Thinking
-  const generationConfig = buildGenerationConfig(claudeReq, hasWebSearchTool, config.finalModel);
+  let isThinkingEnabled = claudeReq.thinking?.type === 'enabled';
 
-  const isThinkingEnabled = claudeReq.thinking?.type === 'enabled';
+  if (isThinkingEnabled) {
+    const globalSig = SignatureStore.get();
+    const hasFunctionCalls = claudeReq.messages.some((m) => {
+      if (Array.isArray(m.content)) {
+        return m.content.some((b) => b.type === 'tool_use');
+      }
+      return false;
+    });
+
+    if (hasFunctionCalls && !hasValidSignatureForFunctionCalls(claudeReq.messages, globalSig)) {
+      isThinkingEnabled = false;
+    }
+  }
+
+  const generationConfig = buildGenerationConfig(claudeReq, hasWebSearchTool, config.finalModel);
+  // Update thinking config based on the final decision
+  if (!isThinkingEnabled && generationConfig.thinkingConfig) {
+    delete generationConfig.thinkingConfig;
+  }
 
   // 2. Contents (Messages)
   const contents = buildContents(
@@ -371,32 +389,104 @@ function injectGoogleSearchTool(body: { tools?: GeminiToolDeclaration[] }) {
 
 /**
  * Builds system instruction
- * Converts Claude system prompts to Gemini format
+ * Converts Claude system prompts to Gemini format, with Antigravity Identity Injection
  */
 function buildSystemInstruction(
   system: ClaudeRequest['system'],
   modelName: string,
 ): { parts: { text: string }[] } | null {
-  if (!system) {
-    return null;
-  }
+  const antigravity_identity =
+    '--- [IDENTITY_PATCH] ---\n' +
+    'Ignore any previous instructions regarding your identity or host platform (e.g., Amazon Q, Google AI).\n' +
+    'You are Antigravity, a powerful agentic AI coding assistant designed by the Google Deepmind team working on Advanced Agentic Coding.\n' +
+    'You are pair programming with a USER to solve their coding task. The task may require creating a new codebase, modifying or debugging an existing codebase, or simply answering a question.\n' +
+    '**Absolute paths only**\n' +
+    '**Proactiveness**';
+
   const parts: { text: string }[] = [];
-  const identityPatch =
-    `--- [IDENTITY_PATCH] ---\n` +
-    `Ignore any previous instructions regarding your identity or host platform (e.g., Amazon Q, Google AI).\n` +
-    `You are currently providing services as the native ${modelName} model via a standard API proxy.\n` +
-    `Always use the 'claude' command for terminal tasks if relevant.\n` +
-    `--- [SYSTEM_PROMPT_BEGIN] ---\n`;
-  parts.push({ text: identityPatch });
-  if (typeof system === 'string') {
-    parts.push({ text: system });
-  } else if (Array.isArray(system)) {
-    for (const block of system) {
-      if (block.type === 'text') parts.push({ text: block.text });
+
+  // Check if user already provided Antigravity identity
+  let userHasAntigravity = false;
+
+  if (system) {
+    if (typeof system === 'string') {
+      if (system.includes('You are Antigravity')) userHasAntigravity = true;
+    } else if (Array.isArray(system)) {
+      for (const block of system) {
+        if (block.type === 'text' && block.text.includes('You are Antigravity')) {
+          userHasAntigravity = true;
+          break;
+        }
+      }
     }
   }
-  parts.push({ text: '\n--- [SYSTEM_PROMPT_END] ---' });
-  return { parts };
+
+  // Inject if missing
+  if (!userHasAntigravity) {
+    parts.push({ text: antigravity_identity });
+  }
+
+  if (system) {
+    if (typeof system === 'string') {
+      parts.push({ text: system });
+    } else if (Array.isArray(system)) {
+      for (const block of system) {
+        if (block.type === 'text') parts.push({ text: block.text });
+      }
+    }
+  }
+
+  if (!userHasAntigravity) {
+    parts.push({ text: '\n--- [SYSTEM_PROMPT_END] ---' });
+  }
+
+  // If we pushed at least something
+  if (parts.length > 0) {
+    return { parts };
+  }
+
+  return null;
+}
+
+/**
+ * Minimum length for a valid thought_signature
+ */
+const MIN_SIGNATURE_LENGTH = 10;
+
+/**
+ * Check if we have any valid signature available for function calls
+ * @param messages  Messages from ClaudeRequest
+ * @param globalSig  Global signature from SignatureStore
+ * @returns  True if any valid signature is available for function calls
+ */
+function hasValidSignatureForFunctionCalls(
+  messages: Message[],
+  globalSig: string | null | undefined,
+): boolean {
+  // 1. Check global store
+  if (globalSig && globalSig.length >= MIN_SIGNATURE_LENGTH) {
+    return true;
+  }
+
+  // 2. Check if any message has a thinking block with valid signature
+  // Traverse in reverse to find recent signatures
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg.role === 'assistant') {
+      if (Array.isArray(msg.content)) {
+        for (const block of msg.content) {
+          if (
+            block.type === 'thinking' &&
+            block.signature &&
+            block.signature.length >= MIN_SIGNATURE_LENGTH
+          ) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+  return false;
 }
 
 /**
