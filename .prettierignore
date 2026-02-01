@@ -3,6 +3,7 @@
 /coverage
 /.vite
 README.md
+CHANGELOG.md
 /src/routeTree.gen.ts
 .agents/
 openspec/
