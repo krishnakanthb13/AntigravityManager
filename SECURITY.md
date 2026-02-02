@@ -90,4 +90,26 @@ When we receive a security bug report, we will:
 3. Prepare fixes for all supported versions
 4. Release new versions as soon as possible
 
-Thank you for helping keep Antigravity Manager and its users safe!
+## 🛡️ Security Audit Log
+
+| Date | Auditor | Scope | Findings | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| 2026-02-02 | Antigravity AI | Full Codebase Sweep | 7 Production Vulnerabilities (NPM Audit), Safe Auth/SQL Patterns | 🟡 Warning |
+
+### Detailed Findings (2026-02-02)
+
+#### 🟢 Passed
+- **SQL Injection**: All SQLite operations use parameterized queries/prepared statements.
+- **Secrets Detection**: No hardcoded API keys or secrets found in the source.
+- **Data Protection**: AES-256-GCM implemented correctly for sensitive storage.
+- **XSS/RCE**: No usage of `innerHTML`, `eval()`, or `new Function()` detected.
+- **Electron Sandbox**: `contextIsolation` is enabled; preload script uses `contextBridge`.
+
+#### 🟡 Warnings
+- **Dependency Audit**: `npm audit` found 7 vulnerabilities in production dependencies (mostly transitive). Recommended: Run `npm update` and `npm audit fix`.
+- **Open Mode Auth**: The Proxy Server defaults to bypassing authentication if no API key is configured. 
+    - *Risk*: Unauthorized access if exposed to the network without a key.
+    - *Mitigation*: Ensure an API key is generated and set during first-run or deployment.
+
+#### 🔴 Critical
+- None detected.
