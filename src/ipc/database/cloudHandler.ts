@@ -245,67 +245,76 @@ export class CloudAccountRepo {
 
       const accounts: CloudAccount[] = [];
       for (const row of rows) {
-        let tokenResult: DecryptFieldResult;
         try {
-          tokenResult = await decryptAndMigrateField(db, row.id, 'token_json', row.token_json);
-        } catch (error) {
-          migrationStats.failedFields += 1;
-          logger.error(`Failed to decrypt token for account ${row.id}`, error);
-          throw error;
-        }
+          let tokenResult: DecryptFieldResult;
+          try {
+            tokenResult = await decryptAndMigrateField(db, row.id, 'token_json', row.token_json);
+          } catch (error) {
+            migrationStats.failedFields += 1;
+            logger.error(`Failed to decrypt token for account ${row.id}`, error);
+            // Skip this account if token cannot be decrypted
+            continue;
+          }
 
-        let quotaResult: DecryptFieldResult;
-        try {
-          quotaResult = await decryptAndMigrateField(db, row.id, 'quota_json', row.quota_json);
-        } catch (error) {
-          migrationStats.failedFields += 1;
-          logger.error(`Failed to decrypt quota for account ${row.id}`, error);
-          throw error;
-        }
+          let quotaResult: DecryptFieldResult;
+          try {
+            quotaResult = await decryptAndMigrateField(db, row.id, 'quota_json', row.quota_json);
+          } catch (error) {
+            migrationStats.failedFields += 1;
+            logger.error(`Failed to decrypt quota for account ${row.id}`, error);
+            // We can still proceed if only quota decryption fails, but token is critical
+            quotaResult = { value: null, migrated: false };
+          }
 
-        if (!tokenResult.value) {
-          throw new Error(`Missing token data for account ${row.id}`);
-        }
+          if (!tokenResult.value) {
+            logger.error(`Missing token data for account ${row.id}`);
+            continue;
+          }
 
-        if (tokenResult.value) {
-          migrationStats.totalFields += 1;
-        }
-        if (tokenResult.usedFallback) {
-          migrationStats.fallbackUsedFields += 1;
-        }
-        if (tokenResult.migrated) {
-          migrationStats.migratedFields += 1;
+          if (tokenResult.value) {
+            migrationStats.totalFields += 1;
+          }
           if (tokenResult.usedFallback) {
-            migrationStats.migratedBySource[tokenResult.usedFallback] += 1;
+            migrationStats.fallbackUsedFields += 1;
           }
-        }
+          if (tokenResult.migrated) {
+            migrationStats.migratedFields += 1;
+            if (tokenResult.usedFallback) {
+              migrationStats.migratedBySource[tokenResult.usedFallback] += 1;
+            }
+          }
 
-        if (quotaResult.value) {
-          migrationStats.totalFields += 1;
-        }
-        if (quotaResult.usedFallback) {
-          migrationStats.fallbackUsedFields += 1;
-        }
-        if (quotaResult.migrated) {
-          migrationStats.migratedFields += 1;
+          if (quotaResult.value) {
+            migrationStats.totalFields += 1;
+          }
           if (quotaResult.usedFallback) {
-            migrationStats.migratedBySource[quotaResult.usedFallback] += 1;
+            migrationStats.fallbackUsedFields += 1;
           }
-        }
+          if (quotaResult.migrated) {
+            migrationStats.migratedFields += 1;
+            if (quotaResult.usedFallback) {
+              migrationStats.migratedBySource[quotaResult.usedFallback] += 1;
+            }
+          }
 
-        accounts.push({
-          id: row.id,
-          provider: row.provider,
-          email: row.email,
-          name: row.name,
-          avatar_url: row.avatar_url,
-          token: JSON.parse(tokenResult.value),
-          quota: quotaResult.value ? JSON.parse(quotaResult.value) : undefined,
-          created_at: row.created_at,
-          last_used: row.last_used,
-          status: row.status,
-          is_active: Boolean(row.is_active),
-        });
+          accounts.push({
+            id: row.id,
+            provider: row.provider,
+            email: row.email,
+            name: row.name,
+            avatar_url: row.avatar_url,
+            token: JSON.parse(tokenResult.value),
+            quota: quotaResult.value ? JSON.parse(quotaResult.value) : undefined,
+            created_at: row.created_at,
+            last_used: row.last_used,
+            status: row.status,
+            is_active: Boolean(row.is_active),
+          });
+        } catch (innerError) {
+          logger.error(`Unexpected error processing account ${row.id}`, innerError);
+          migrationStats.failedFields += 1;
+          // Continue to next account
+        }
       }
 
       return accounts;
@@ -446,7 +455,7 @@ export class CloudAccountRepo {
       if (!row || !row.value) {
         logger.warn(
           'jetskiStateSync.agentManagerInitState not found. ' +
-            'Injecting minimal auth state only. User may need to complete onboarding in the IDE first.',
+          'Injecting minimal auth state only. User may need to complete onboarding in the IDE first.',
         );
 
         // Inject minimal state: auth status and onboarding flag only

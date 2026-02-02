@@ -93,10 +93,19 @@ async function readSafeStorageKey(keyPath: string): Promise<Buffer | null> {
   }
 
   try {
-    const encryptedKey = await fs.readFile(keyPath);
-    const hexKey = safeStorage.decryptString(encryptedKey);
+    const content = await fs.readFile(keyPath);
+
+    // Check if it's a legacy plaintext key (64 chars hex)
+    const text = content.toString('utf8').trim();
+    if (text.length === 64 && /^[a-f0-9]+$/i.test(text)) {
+      logger.info('Security: Found legacy plaintext key in safeStorage path');
+      return Buffer.from(text, 'hex');
+    }
+
+    const hexKey = safeStorage.decryptString(content);
 
     if (!/^[a-f0-9]+$/i.test(hexKey) || hexKey.length !== 64) {
+      logger.warn('Security: safeStorage key has invalid format after decryption');
       return null;
     }
 
@@ -106,17 +115,43 @@ async function readSafeStorageKey(keyPath: string): Promise<Buffer | null> {
       return null;
     }
 
-    logger.warn('Security: Failed to read safeStorage key file', error);
-    return null;
+    // If file exists but safeStorage failed, it's likely a machine change or corruption
+    logger.warn('Security: Failed to decrypt safeStorage key file', error);
+    // Throw specialized error to signal corruption/machine-change rather than missing file
+    throw new Error('CORRUPT_OR_LOCKED');
   }
 }
 
 async function getOrCreateSafeStorageKey(
   keyPath: string,
 ): Promise<{ key: Buffer; created: boolean }> {
-  const existingKey = await readSafeStorageKey(keyPath);
-  if (existingKey) {
-    return { key: existingKey, created: false };
+  try {
+    const existingKey = await readSafeStorageKey(keyPath);
+    if (existingKey) {
+      // If it's a plaintext key, migrate it to safeStorage immediately
+      const content = await fs.readFile(keyPath);
+      const text = content.toString('utf8').trim();
+      if (text.length === 64 && /^[a-f0-9]+$/i.test(text) && safeStorage.isEncryptionAvailable()) {
+        const encrypted = safeStorage.encryptString(text);
+        await atomicWriteFile(keyPath, encrypted, { mode: 0o600 });
+        logger.info('Security: Migrated legacy plaintext key to safeStorage');
+      }
+      return { key: existingKey, created: false };
+    }
+  } catch (error) {
+    if ((error as Error).message === 'CORRUPT_OR_LOCKED') {
+      const backupPath = `${keyPath}.bak.${Date.now()}`;
+      try {
+        await fs.rename(keyPath, backupPath);
+        logger.warn(
+          `Security: Master key file was unreadable (likely machine change). Backed up to ${backupPath}`,
+        );
+      } catch (renameError) {
+        logger.error('Security: Failed to backup unreadable key file', renameError);
+      }
+    } else {
+      throw error;
+    }
   }
 
   const buffer = crypto.randomBytes(32);
@@ -215,10 +250,52 @@ async function getFallbackMasterKeys(
   }
 
   if (primarySource !== 'safeStorage') {
-    const safeStorageKey = await readSafeStorageKey(keyPath);
-    if (safeStorageKey) {
-      fallbackKeys.push({ key: safeStorageKey, source: 'safeStorage' });
+    try {
+      const safeStorageKey = await readSafeStorageKey(keyPath);
+      if (safeStorageKey) {
+        fallbackKeys.push({ key: safeStorageKey, source: 'safeStorage' });
+      }
+    } catch {
+      // Ignore safeStorage errors during fallback search
     }
+  }
+
+  // Also check for backup files which might contain older master keys
+  try {
+    const dir = path.dirname(keyPath);
+    const files = await fs.readdir(dir);
+    const backupFiles = files
+      .filter((f) => f.startsWith('.mk.bak.'))
+      .sort()
+      .reverse()
+      .slice(0, 5); // Try only top 5 recent backups
+
+    for (const f of backupFiles) {
+      const bPath = path.join(dir, f);
+      try {
+        const content = await fs.readFile(bPath);
+        // Try safeStorage first
+        if (safeStorage.isEncryptionAvailable()) {
+          try {
+            const hexKey = safeStorage.decryptString(content);
+            if (/^[a-f0-9]+$/i.test(hexKey) && hexKey.length === 64) {
+              fallbackKeys.push({ key: Buffer.from(hexKey, 'hex'), source: 'file' });
+            }
+          } catch {
+            // Not a safeStorage backup, try plaintext
+          }
+        }
+        // Try plaintext
+        const text = content.toString('utf8').trim();
+        if (text.length === 64 && /^[a-f0-9]+$/i.test(text)) {
+          fallbackKeys.push({ key: Buffer.from(text, 'hex'), source: 'file' });
+        }
+      } catch {
+        // Skip inaccessible backups
+      }
+    }
+  } catch (err) {
+    logger.warn('Security: Failed to search for backup master keys', err);
   }
 
   return fallbackKeys;
@@ -314,8 +391,8 @@ async function generatePrimaryMasterKey(): Promise<MasterKeyState> {
 
   logger.warn(
     'Security: WARNING - Using file-based key storage. ' +
-      'This is less secure than system keychain. ' +
-      'Ensure the app data directory has restricted permissions.',
+    'This is less secure than system keychain. ' +
+    'Ensure the app data directory has restricted permissions.',
   );
 
   try {
