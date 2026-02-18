@@ -22,6 +22,9 @@ import { MoreVertical, Trash, RefreshCw, Box, Power, Fingerprint } from 'lucide-
 import { formatDistanceToNow, differenceInMinutes, differenceInHours, isBefore } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { useTranslation } from 'react-i18next';
+import { useAppConfig } from '@/hooks/useAppConfig';
+import { useProviderGrouping } from '@/hooks/useProviderGrouping';
+import { ProviderGroup } from '@/components/ProviderGroup';
 
 interface CloudAccountCardProps {
   account: CloudAccount;
@@ -49,6 +52,13 @@ export function CloudAccountCard({
   isSwitching,
 }: CloudAccountCardProps) {
   const { t } = useTranslation();
+  const { config } = useAppConfig();
+  const {
+    enabled: providerGroupingsEnabled,
+    getAccountStats,
+    isProviderCollapsed,
+    toggleProviderCollapse,
+  } = useProviderGrouping();
 
   // Helpers to get quota color
   const getQuotaColor = (percentage: number) => {
@@ -69,6 +79,13 @@ export function CloudAccountCard({
       return 'bg-amber-500';
     }
     return 'bg-rose-500';
+  };
+
+  const getQuotaLabel = (percentage: number) => {
+    if (percentage === 0) {
+      return t('cloud.card.rateLimitedQuota');
+    }
+    return `${percentage}%`;
   };
 
   const formatTimeRemaining = (dateStr: string) => {
@@ -120,17 +137,19 @@ export function CloudAccountCard({
     return `${t('cloud.card.resetTime')}: ${resetDate.toLocaleString()}`;
   };
 
-  const modelQuotas = Object.entries(account.quota?.models || {});
+  const modelQuotas = Object.entries(account.quota?.models || {}).filter(
+    ([modelName]) => config?.model_visibility?.[modelName] !== false,
+  );
 
   return (
     <Card
-      className={`group flex h-full flex-col overflow-hidden border bg-card transition-all duration-200 hover:border-primary/40 hover:shadow-sm ${isSelected ? 'ring-primary border-primary/50 ring-2' : ''}`}
+      className={`group bg-card hover:border-primary/40 flex h-full flex-col overflow-hidden border transition-all duration-200 hover:shadow-sm ${isSelected ? 'ring-primary border-primary/50 ring-2' : ''}`}
     >
       <CardHeader className="relative flex flex-row items-center gap-4 space-y-0 pb-2">
         {/* Selection Checkbox - Visible on hover or selected */}
         {onToggleSelection && (
           <div
-            className={`absolute top-2 left-2 z-10 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} rounded-full bg-background/90 p-2 transition-opacity`}
+            className={`absolute top-2 left-2 z-10 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} bg-background/90 rounded-full p-2 transition-opacity`}
           >
             <Checkbox
               checked={isSelected}
@@ -238,11 +257,64 @@ export function CloudAccountCard({
         </div>
 
         <div className="space-y-2">
-          {modelQuotas.length > 0 ? (
+          {providerGroupingsEnabled ? (
+            // Grouped view with provider sections
+            (() => {
+              const accountStats = getAccountStats(account);
+              if (accountStats.visibleModels === 0) {
+                return (
+                  <div className="text-muted-foreground flex flex-col items-center justify-center py-4">
+                    <Box className="mb-2 h-8 w-8 opacity-20" />
+                    <span className="text-xs">{t('cloud.card.noQuota')}</span>
+                  </div>
+                );
+              }
+              return (
+                <>
+                  {/* Account-level overall stats */}
+                  <div className="bg-muted/40 flex items-center justify-between rounded-lg px-3 py-1.5 text-xs">
+                    <span className="font-medium">{t('settings.providerGroupings.overall')}</span>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`font-mono font-bold ${getQuotaColor(accountStats.overallPercentage)}`}
+                      >
+                        {getQuotaLabel(accountStats.overallPercentage)}
+                      </span>
+                      <div className="bg-muted h-1.5 w-16 overflow-hidden rounded-full">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${getQuotaBarColor(accountStats.overallPercentage)}`}
+                          style={{
+                            width: `${Math.max(0, Math.min(100, accountStats.overallPercentage))}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  {/* Provider groups */}
+                  {accountStats.providers.map((providerStats) => (
+                    <ProviderGroup
+                      key={providerStats.providerKey}
+                      stats={providerStats}
+                      isCollapsed={isProviderCollapsed(account.id, providerStats.providerKey)}
+                      onToggleCollapse={() =>
+                        toggleProviderCollapse(account.id, providerStats.providerKey)
+                      }
+                      getQuotaColor={getQuotaColor}
+                      getQuotaBarColor={getQuotaBarColor}
+                      getQuotaLabel={getQuotaLabel}
+                      getResetTimeLabel={getResetTimeLabel}
+                      getResetTimeTitle={getResetTimeTitle}
+                      leftLabel={t('cloud.card.left')}
+                    />
+                  ))}
+                </>
+              );
+            })()
+          ) : modelQuotas.length > 0 ? (
             modelQuotas.map(([modelName, info]) => (
               <div
                 key={modelName}
-                className="hover:bg-muted/60 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 rounded-lg border border-transparent px-2 py-2 text-sm transition-colors hover:border-border/60"
+                className="hover:bg-muted/60 hover:border-border/60 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 rounded-lg border border-transparent px-2 py-2 text-sm transition-colors"
               >
                 <span className="text-muted-foreground min-w-0 truncate" title={modelName}>
                   {modelName.replace('models/', '')}
@@ -254,15 +326,17 @@ export function CloudAccountCard({
                   >
                     {getResetTimeLabel(info.resetTime)}
                   </span>
-                <div className="flex items-baseline gap-1.5">
+                  <div className="flex items-baseline gap-1.5">
                     <span
                       className={`font-mono leading-none font-bold ${getQuotaColor(info.percentage)}`}
                     >
-                      {info.percentage}%
+                      {getQuotaLabel(info.percentage)}
                     </span>
-                    <span className="text-muted-foreground text-[10px]">
-                      {t('cloud.card.left')}
-                    </span>
+                    {info.percentage > 0 && (
+                      <span className="text-muted-foreground text-[10px]">
+                        {t('cloud.card.left')}
+                      </span>
+                    )}
                   </div>
                   <div className="bg-muted h-1.5 w-24 overflow-hidden rounded-full">
                     <div

@@ -18,7 +18,8 @@ import { useTranslation } from 'react-i18next';
 import { setAppLanguage } from '@/actions/language';
 import { useAppConfig } from '@/hooks/useAppConfig';
 import { Loader2, FolderOpen } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { ModelVisibilitySettings } from '@/components/ModelVisibilitySettings';
+import { useEffect, useState } from 'react';
 import { ProxyConfig } from '@/types/config';
 import { openLogDirectory } from '@/actions/system';
 
@@ -80,8 +81,9 @@ function SettingsPage() {
       </div>
 
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="general">{t('settings.general', 'General')}</TabsTrigger>
+          <TabsTrigger value="models">{t('settings.models', 'Models')}</TabsTrigger>
           <TabsTrigger value="proxy">{t('settings.proxy_tab', 'Proxy')}</TabsTrigger>
         </TabsList>
 
@@ -295,6 +297,11 @@ function SettingsPage() {
               </p>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* --- MODELS TAB --- */}
+        <TabsContent value="models" className="space-y-5">
+          <ModelVisibilitySettings />
         </TabsContent>
 
         {/* --- PROXY TAB (Upstream Proxy Config Only) --- */}

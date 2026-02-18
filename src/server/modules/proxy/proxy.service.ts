@@ -119,8 +119,8 @@ export class ProxyService {
               );
               return this.toAnthropicChatResponse(transformResponse(response));
             }
-          } catch (fallbackError) {
-            error = fallbackError;
+          } catch (fallbackErr) {
+            lastError = fallbackErr;
           }
         }
 
@@ -158,8 +158,8 @@ export class ProxyService {
                 model: request.model,
               };
             }
-          } catch (downgradeError) {
-            error = downgradeError;
+          } catch (downgradeErr) {
+            lastError = downgradeErr;
           }
         }
 
@@ -313,10 +313,10 @@ export class ProxyService {
         );
 
         return this.normalizeGeminiGenerateResponse(response);
-      } catch (error) {
-        if (error instanceof Error && this.isProjectContextError(error.message)) {
+      } catch (err) {
+        if (err instanceof Error && this.isProjectContextError(err.message)) {
           this.logger.warn(
-            `Gemini request hit project context issue, retrying without project: ${error.message}`,
+            `Gemini request hit project context issue, retrying without project: ${err.message}`,
           );
           try {
             const fallbackBody = this.createGeminiInternalRequest(
@@ -332,15 +332,16 @@ export class ProxyService {
               extraHeaders,
             );
             return this.normalizeGeminiGenerateResponse(response);
-          } catch (fallbackError) {
-            error = fallbackError;
+          } catch (fallbackErr) {
+            lastError = fallbackErr;
           }
+        } else {
+          lastError = err;
         }
 
-        lastError = error;
-        if (error instanceof Error) {
-          this.logger.warn(`Gemini request failed with account ${token.email}: ${error.message}`);
-          const decision = this.classifyUpstreamError(error.message);
+        if (lastError instanceof Error) {
+          this.logger.warn(`Gemini request failed with account ${token.email}: ${lastError.message}`);
+          const decision = this.classifyUpstreamError(lastError.message);
           if (decision.retry) {
             if (decision.markAsForbidden) {
               this.tokenManager.markAsForbidden(token.id);
@@ -400,10 +401,10 @@ export class ProxyService {
           extraHeaders,
         );
         return this.passthroughSseStream(stream);
-      } catch (error) {
-        if (error instanceof Error && this.isProjectContextError(error.message)) {
+      } catch (err) {
+        if (err instanceof Error && this.isProjectContextError(err.message)) {
           this.logger.warn(
-            `Gemini stream request hit project context issue, retrying without project: ${error.message}`,
+            `Gemini stream request hit project context issue, retrying without project: ${err.message}`,
           );
           try {
             const fallbackBody = this.createGeminiInternalRequest(
@@ -419,17 +420,18 @@ export class ProxyService {
               extraHeaders,
             );
             return this.passthroughSseStream(stream);
-          } catch (fallbackError) {
-            error = fallbackError;
+          } catch (fallbackErr) {
+            lastError = fallbackErr;
           }
+        } else {
+          lastError = err;
         }
 
-        lastError = error;
-        if (error instanceof Error) {
+        if (lastError instanceof Error) {
           this.logger.warn(
-            `Gemini stream request failed with account ${token.email}: ${error.message}`,
+            `Gemini stream request failed with account ${token.email}: ${lastError.message}`,
           );
-          const decision = this.classifyUpstreamError(error.message);
+          const decision = this.classifyUpstreamError(lastError.message);
           if (decision.retry) {
             if (decision.markAsForbidden) {
               this.tokenManager.markAsForbidden(token.id);
@@ -627,10 +629,10 @@ export class ProxyService {
           this.logger.log(`Claude Response: ${JSON.stringify(claudeResponse).substring(0, 500)}`);
           return this.convertClaudeToOpenAIResponse(claudeResponse, request.model);
         }
-      } catch (error) {
-        if (error instanceof Error && this.isProjectContextError(error.message)) {
+      } catch (err) {
+        if (err instanceof Error && this.isProjectContextError(err.message)) {
           this.logger.warn(
-            `OpenAI compatibility request hit project context issue, retrying without project: ${error.message}`,
+            `OpenAI compatibility request hit project context issue, retrying without project: ${err.message}`,
           );
           try {
             const claudeRequest = this.convertOpenAIToClaude(request);
@@ -653,16 +655,17 @@ export class ProxyService {
             );
             const claudeResponse = transformResponse(response);
             return this.convertClaudeToOpenAIResponse(claudeResponse, request.model);
-          } catch (fallbackError) {
-            error = fallbackError;
+          } catch (fallbackErr) {
+            lastError = fallbackErr;
           }
+        } else {
+          lastError = err;
         }
 
-        lastError = error;
-        if (error instanceof Error) {
-          this.logger.warn(`Request failed with account ${token.email}: ${error.message}`);
+        if (lastError instanceof Error) {
+          this.logger.warn(`Request failed with account ${token.email}: ${lastError.message}`);
 
-          const decision = this.classifyUpstreamError(error.message);
+          const decision = this.classifyUpstreamError(lastError.message);
           if (decision.retry) {
             if (decision.markAsForbidden) {
               this.tokenManager.markAsForbidden(token.id);

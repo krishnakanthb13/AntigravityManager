@@ -27,6 +27,10 @@ import {
   Trash2,
   X,
   RefreshCw,
+  LayoutGrid,
+  List,
+  Columns2,
+  Columns3,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -40,15 +44,27 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getLocalizedErrorMessage } from '@/utils/errorMessages';
+import { useAppConfig } from '@/hooks/useAppConfig';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // ... (existing code: imports and comments)
+
+export type GridLayout = 'auto' | '2-col' | '3-col' | 'list';
+
+const GRID_LAYOUT_CLASSES: Record<GridLayout, string> = {
+  auto: 'grid gap-4 md:grid-cols-2 xl:grid-cols-3',
+  '2-col': 'grid gap-4 grid-cols-2',
+  '3-col': 'grid gap-4 grid-cols-3',
+  list: 'grid gap-4 grid-cols-1',
+};
 
 export function CloudAccountList() {
   const { t } = useTranslation();
   const { data: accounts, isLoading, isError, error, errorUpdatedAt, refetch } = useCloudAccounts();
+  const { config, saveConfig } = useAppConfig();
   const refreshMutation = useRefreshQuota();
   const deleteMutation = useDeleteCloudAccount();
   const addMutation = useAddGoogleAccount();
@@ -61,6 +77,63 @@ export function CloudAccountList() {
 
   const { toast } = useToast();
   const lastCloudLoadErrorToastAt = useRef<number>(0);
+
+  const gridLayout: GridLayout = (config?.grid_layout as GridLayout) || 'auto';
+
+  const setGridLayout = async (layout: GridLayout) => {
+    if (config) {
+      await saveConfig({ ...config, grid_layout: layout });
+    }
+  };
+
+  // Calculate global quota across all accounts
+  const globalQuota = useMemo(() => {
+    if (!accounts || accounts.length === 0) {
+      return null;
+    }
+
+    const visibilitySettings = config?.model_visibility ?? {};
+    let totalPercentage = 0;
+    let modelCount = 0;
+
+    accounts.forEach((account) => {
+      if (!account.quota?.models) {
+        return;
+      }
+      Object.entries(account.quota.models).forEach(([modelName, info]) => {
+        if (visibilitySettings[modelName] !== false) {
+          totalPercentage += info.percentage;
+          modelCount++;
+        }
+      });
+    });
+
+    if (modelCount === 0) {
+      return null;
+    }
+
+    return Math.round((totalPercentage / modelCount) * 10) / 10;
+  }, [accounts, config?.model_visibility]);
+
+  const getGlobalQuotaColor = (percentage: number) => {
+    if (percentage > 80) {
+      return 'bg-emerald-500';
+    }
+    if (percentage > 20) {
+      return 'bg-amber-500';
+    }
+    return 'bg-rose-500';
+  };
+
+  const getGlobalQuotaTextColor = (percentage: number) => {
+    if (percentage > 80) {
+      return 'text-emerald-600 dark:text-emerald-400';
+    }
+    if (percentage > 20) {
+      return 'text-amber-600 dark:text-amber-400';
+    }
+    return 'text-rose-600 dark:text-rose-400';
+  };
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [authCode, setAuthCode] = useState('');
@@ -328,7 +401,7 @@ export function CloudAccountList() {
 
   return (
     <div className="space-y-5 pb-20">
-      <div className="rounded-lg border bg-card p-5">
+      <div className="bg-card rounded-lg border p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex shrink-0 flex-col gap-1">
             <h2 className="text-2xl font-bold tracking-tight">{t('cloud.title')}</h2>
@@ -336,22 +409,49 @@ export function CloudAccountList() {
           </div>
           <div className="flex flex-wrap gap-2">
             <div className="bg-muted/50 rounded-md border px-3 py-2">
-              <div className="text-muted-foreground text-[11px] uppercase">{t('cloud.card.actions')}</div>
+              <div className="text-muted-foreground text-[11px] uppercase">
+                {t('cloud.card.actions')}
+              </div>
               <div className="text-base font-semibold">{totalAccounts}</div>
             </div>
             <div className="bg-muted/50 rounded-md border px-3 py-2">
-              <div className="text-muted-foreground text-[11px] uppercase">{t('cloud.card.active')}</div>
+              <div className="text-muted-foreground text-[11px] uppercase">
+                {t('cloud.card.active')}
+              </div>
               <div className="text-base font-semibold text-emerald-600">{activeAccounts}</div>
             </div>
             <div className="bg-muted/50 rounded-md border px-3 py-2">
-              <div className="text-muted-foreground text-[11px] uppercase">{t('cloud.card.rateLimited')}</div>
+              <div className="text-muted-foreground text-[11px] uppercase">
+                {t('cloud.card.rateLimited')}
+              </div>
               <div className="text-base font-semibold text-rose-600">{rateLimitedAccounts}</div>
             </div>
+            {/* Global Quota */}
+            {globalQuota !== null && (
+              <div className="bg-muted/50 rounded-md border px-3 py-2">
+                <div className="text-muted-foreground text-[11px] uppercase">
+                  {t('cloud.globalQuota')}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`text-base font-semibold ${getGlobalQuotaTextColor(globalQuota)}`}
+                  >
+                    {globalQuota}%
+                  </span>
+                  <div className="bg-muted h-2 w-20 overflow-hidden rounded-full">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${getGlobalQuotaColor(globalQuota)}`}
+                      style={{ width: `${Math.max(0, Math.min(100, globalQuota))}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card p-3">
+      <div className="bg-card flex flex-wrap items-center gap-2 rounded-lg border p-3">
         <div className="bg-muted/50 flex items-center gap-2 rounded-md border px-3 py-2">
           <div className="flex items-center gap-2">
             <Zap
@@ -369,7 +469,12 @@ export function CloudAccountList() {
           />
         </div>
 
-        <Button variant="ghost" onClick={toggleSelectAll} title={t('cloud.batch.selectAll')} className="cursor-pointer">
+        <Button
+          variant="ghost"
+          onClick={toggleSelectAll}
+          title={t('cloud.batch.selectAll')}
+          className="cursor-pointer"
+        >
           <CheckSquare
             className={`mr-2 h-4 w-4 ${selectedIds.size > 0 && selectedIds.size === accounts?.length ? 'text-primary fill-primary/20' : ''}`}
           />
@@ -384,9 +489,7 @@ export function CloudAccountList() {
           disabled={forcePollMutation.isPending}
           className="cursor-pointer"
         >
-          <RefreshCcw
-            className={`h-4 w-4 ${forcePollMutation.isPending ? 'animate-spin' : ''}`}
-          />
+          <RefreshCcw className={`h-4 w-4 ${forcePollMutation.isPending ? 'animate-spin' : ''}`} />
         </Button>
 
         <Button
@@ -396,9 +499,7 @@ export function CloudAccountList() {
           title={t('cloud.syncFromIDE')}
           className="cursor-pointer"
         >
-          <Download
-            className={`mr-2 h-4 w-4 ${syncMutation.isPending ? 'animate-bounce' : ''}`}
-          />
+          <Download className={`mr-2 h-4 w-4 ${syncMutation.isPending ? 'animate-bounce' : ''}`} />
           {t('cloud.syncFromIDE')}
         </Button>
 
@@ -427,13 +528,9 @@ export function CloudAccountList() {
                   id="code"
                   placeholder={t('cloud.authDialog.placeholder')}
                   value={authCode}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setAuthCode(e.target.value)
-                  }
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAuthCode(e.target.value)}
                 />
-                <p className="text-muted-foreground text-xs">
-                  {t('cloud.authDialog.instruction')}
-                </p>
+                <p className="text-muted-foreground text-xs">{t('cloud.authDialog.instruction')}</p>
               </div>
             </div>
             <DialogFooter>
@@ -447,9 +544,67 @@ export function CloudAccountList() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Layout Selector */}
+        <div className="ml-auto flex items-center gap-1 rounded-md border p-1">
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={gridLayout === 'auto' ? 'secondary' : 'ghost'}
+                  size="icon"
+                  className="h-7 w-7 cursor-pointer"
+                  onClick={() => setGridLayout('auto')}
+                >
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('cloud.layout.auto')}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={gridLayout === '2-col' ? 'secondary' : 'ghost'}
+                  size="icon"
+                  className="h-7 w-7 cursor-pointer"
+                  onClick={() => setGridLayout('2-col')}
+                >
+                  <Columns2 className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('cloud.layout.twoCol')}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={gridLayout === '3-col' ? 'secondary' : 'ghost'}
+                  size="icon"
+                  className="h-7 w-7 cursor-pointer"
+                  onClick={() => setGridLayout('3-col')}
+                >
+                  <Columns3 className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('cloud.layout.threeCol')}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={gridLayout === 'list' ? 'secondary' : 'ghost'}
+                  size="icon"
+                  className="h-7 w-7 cursor-pointer"
+                  onClick={() => setGridLayout('list')}
+                >
+                  <List className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('cloud.layout.list')}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className={GRID_LAYOUT_CLASSES[gridLayout]}>
         {accounts?.map((account) => (
           <CloudAccountCard
             key={account.id}

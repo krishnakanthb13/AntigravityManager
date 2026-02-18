@@ -28,6 +28,9 @@ export const AppConfigSchema = z.object({
   error_reporting_enabled: z.boolean(),
   privacy_consent_asked: z.boolean().optional().default(false), // Optional for backward compatibility
   default_export_path: z.string().nullable().optional(), // 导出路径
+  model_visibility: z.record(z.string(), z.boolean()).default({}), // Model visibility preferences
+  provider_groupings_enabled: z.boolean().default(false), // Enable provider groupings UI
+  grid_layout: z.enum(['auto', '2-col', '3-col', 'list']).default('auto'), // Account card grid layout
   proxy: ProxyConfigSchema,
 });
 
@@ -46,6 +49,9 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   error_reporting_enabled: true, // Default to disabled for privacy
   privacy_consent_asked: false, // Whether the user has been asked for consent
   default_export_path: null,
+  model_visibility: {}, // Model visibility preferences
+  provider_groupings_enabled: false, // Enable provider groupings UI
+  grid_layout: 'auto' as const, // Account card grid layout
   proxy: {
     enabled: false,
     port: 8045,

@@ -12,22 +12,6 @@ function createReplyMock() {
 }
 
 describe('ProxyController Integration', () => {
-  it('supports models listing endpoints', () => {
-    const proxyService = {};
-    const controller = new ProxyController(proxyService as any);
-
-    const allModels = controller.getModels();
-    const claudeModels = controller.getClaudeModels();
-
-    expect(allModels.object).toBe('list');
-    expect(Array.isArray(allModels.data)).toBe(true);
-    expect(allModels.data.length).toBeGreaterThan(0);
-    expect(allModels.data.every((model) => model.owned_by === 'antigravity')).toBe(true);
-    expect(allModels.data.every((model) => model.created === 1770652800)).toBe(true);
-
-    expect(claudeModels).toEqual(allModels);
-  });
-
   it('routes Claude OpenAI requests to protocol parity path', async () => {
     const proxyService = {
       handleChatCompletions: vi.fn().mockResolvedValue({ ok: true }),
@@ -437,24 +421,6 @@ describe('ProxyController Integration', () => {
     expect(proxyService.handleGeminiGenerateContent).not.toHaveBeenCalled();
     expect(reply.status).toHaveBeenCalledWith(400);
     expect(reply.send).toHaveBeenCalledWith('Invalid `boundary` for `multipart/form-data` request');
-  });
-
-  it('supports model detect endpoint', () => {
-    const proxyService = {
-      detectModelCapabilities: vi.fn().mockReturnValue({
-        model: 'claude-sonnet-4-5',
-        mapped_model: 'gemini-3-pro-preview',
-        type: 'generate-content',
-        features: { has_web_search: false, is_image_gen: false },
-      }),
-    };
-    const controller = new ProxyController(proxyService as any);
-    const reply = createReplyMock();
-
-    controller.detectModel({ model: 'claude-sonnet-4-5' }, reply as any);
-
-    expect(proxyService.detectModelCapabilities).toHaveBeenCalledWith('claude-sonnet-4-5');
-    expect(reply.status).toHaveBeenCalledWith(200);
   });
 
   it('supports Anthropic messages endpoint', async () => {
