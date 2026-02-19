@@ -345,15 +345,18 @@ export async function closeAntigravity(): Promise<void> {
  * @param timeoutMs {number} The timeout in milliseconds.
  * @returns {Promise<void>} A promise that resolves when the process exits.
  */
-export async function _waitForProcessExit(timeoutMs: number): Promise<void> {
+export async function _waitForProcessExit(
+  timeoutMs: number,
+  pollInterval = 100, // Make it configurable, but keep fast 100ms default
+): Promise<void> {
   const startTime = Date.now();
   while (Date.now() - startTime < timeoutMs) {
     if (!(await isProcessRunning())) {
       return;
     }
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, pollInterval));
   }
-  throw new Error('Process did not exit within timeout');
+  throw new Error(`Antigravity process did not exit within ${timeoutMs}ms`);
 }
 
 /**

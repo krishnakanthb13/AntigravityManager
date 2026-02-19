@@ -99,7 +99,10 @@ describe('Account Handler', () => {
   it('should reuse existing device profile on switch', async () => {
     const account = await addAccountSnapshot();
     const accountFilePath = path.join(testAgentDir, 'accounts.json');
-    const allAccounts = JSON.parse(fs.readFileSync(accountFilePath, 'utf-8')) as Record<string, any>;
+    const allAccounts = JSON.parse(fs.readFileSync(accountFilePath, 'utf-8')) as Record<
+      string,
+      any
+    >;
     allAccounts[account.id].deviceProfile = {
       machineId: 'existing-machine',
       macMachineId: 'existing-mac',

@@ -20,10 +20,7 @@ import {
   startAuthFlow,
 } from './handler';
 import { CloudAccountSchema } from '../../types/cloudAccount';
-import {
-  DeviceProfileSchema,
-  DeviceProfilesSnapshotSchema,
-} from '../../types/account';
+import { DeviceProfileSchema, DeviceProfilesSnapshotSchema } from '../../types/account';
 import { CloudAccountRepo } from '../database/cloudHandler';
 import { logger } from '../../utils/logger';
 import { getSwitchMetricsSnapshot } from '../switchMetrics';

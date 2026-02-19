@@ -53,7 +53,10 @@ export function previewGenerateCloudIdentityProfile() {
   return ipc.client.cloud.previewIdentityProfile();
 }
 
-export function bindCloudIdentityProfile(input: { accountId: string; mode: 'capture' | 'generate' }) {
+export function bindCloudIdentityProfile(input: {
+  accountId: string;
+  mode: 'capture' | 'generate';
+}) {
   return ipc.client.cloud.bindIdentityProfile(input);
 }
 
@@ -64,7 +67,10 @@ export function bindCloudIdentityProfileWithPayload(input: {
   return ipc.client.cloud.bindIdentityProfileWithPayload(input);
 }
 
-export function restoreCloudIdentityProfileRevision(input: { accountId: string; versionId: string }) {
+export function restoreCloudIdentityProfileRevision(input: {
+  accountId: string;
+  versionId: string;
+}) {
   return ipc.client.cloud.restoreIdentityProfileRevision(input);
 }
 
@@ -72,7 +78,10 @@ export function restoreCloudBaselineProfile(input: { accountId: string }) {
   return ipc.client.cloud.restoreBaselineProfile(input);
 }
 
-export function deleteCloudIdentityProfileRevision(input: { accountId: string; versionId: string }) {
+export function deleteCloudIdentityProfileRevision(input: {
+  accountId: string;
+  versionId: string;
+}) {
   return ipc.client.cloud.deleteIdentityProfileRevision(input);
 }
 

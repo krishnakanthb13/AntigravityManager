@@ -21,11 +21,7 @@ describe('ProtobufUtils Unified OAuth', () => {
     const refreshToken = 'refresh-token-def';
     const expiry = 1700001234;
 
-    const unifiedB64 = ProtobufUtils.createUnifiedOAuthToken(
-      accessToken,
-      refreshToken,
-      expiry,
-    );
+    const unifiedB64 = ProtobufUtils.createUnifiedOAuthToken(accessToken, refreshToken, expiry);
     const unifiedBytes = new Uint8Array(Buffer.from(unifiedB64, 'base64'));
     const parsed = ProtobufUtils.extractOAuthTokenInfoFromUnifiedState(unifiedBytes);
 

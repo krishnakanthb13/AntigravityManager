@@ -266,7 +266,6 @@ describe('CloudAccountRepo.syncFromIDE', () => {
     expect(wroteUnifiedKey).toBe(true);
     expect(updatedOldKey).toBe(false);
   });
-
 });
 
 describe('cloud switch fail-fast path', () => {

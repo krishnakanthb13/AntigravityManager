@@ -115,8 +115,12 @@ export class QuotaService {
               const percentage = Math.floor(fraction * 100);
               const resetTime = info.quotaInfo.resetTime || '';
 
-              // Only save models we care about
-              if (name.includes('gemini') || name.includes('claude')) {
+              // Only save models we care about, filtering out old versions (< 3.0)
+              const isGemini = name.includes('gemini');
+              const isClaude = name.includes('claude');
+              const isOldGemini = /gemini-[12](\.|$|-)/.test(name);
+
+              if ((isGemini || isClaude) && !isOldGemini) {
                 quotaData.models[name] = { percentage, resetTime };
               }
             }

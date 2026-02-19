@@ -232,7 +232,8 @@ async function validateRuntimeAnthropicRequestFromRealTokenManager(): Promise<vo
     },
     markAsRateLimited: (accountIdOrEmail: string) =>
       realTokenManager.markAsRateLimited(accountIdOrEmail),
-    markAsForbidden: (accountIdOrEmail: string) => realTokenManager.markAsForbidden(accountIdOrEmail),
+    markAsForbidden: (accountIdOrEmail: string) =>
+      realTokenManager.markAsForbidden(accountIdOrEmail),
   };
 
   try {
@@ -256,7 +257,9 @@ async function validateRuntimeAnthropicRequestFromRealTokenManager(): Promise<vo
   const captured = capturedBody as Record<string, unknown>;
   const tokenProjectId = selectedToken?.token?.project_id;
   const normalizedTokenProjectId =
-    typeof tokenProjectId === 'string' && tokenProjectId.trim() !== '' ? tokenProjectId.trim() : undefined;
+    typeof tokenProjectId === 'string' && tokenProjectId.trim() !== ''
+      ? tokenProjectId.trim()
+      : undefined;
 
   if (normalizedTokenProjectId) {
     assert.equal(
@@ -275,7 +278,10 @@ async function validateRuntimeAnthropicRequestFromRealTokenManager(): Promise<vo
     '[DEBUG] Observed getNextToken options from ProxyService:',
     JSON.stringify(observedGetNextTokenOptions, null, 2),
   );
-  console.log('[DEBUG] Selected token project_id from TokenManagerService:', tokenProjectId ?? null);
+  console.log(
+    '[DEBUG] Selected token project_id from TokenManagerService:',
+    tokenProjectId ?? null,
+  );
   console.log(
     '[DEBUG] Runtime captured internal request (from handleAnthropicMessages):',
     JSON.stringify(captured, null, 2),

@@ -2,7 +2,11 @@ import { type DeviceProfile } from '../types/account';
 import { logger } from '../utils/logger';
 import { closeAntigravity, startAntigravity, _waitForProcessExit } from './process/handler';
 import { applyDeviceProfile } from './device/handler';
-import { type SwitchFailureReason, recordSwitchFailure, recordSwitchSuccess } from './switchMetrics';
+import {
+  type SwitchFailureReason,
+  recordSwitchFailure,
+  recordSwitchSuccess,
+} from './switchMetrics';
 
 export interface SwitchFlowOptions {
   scope: 'local' | 'cloud';
@@ -47,13 +51,7 @@ function toSwitchFailureReason(stage: string, error: unknown): SwitchFailureReas
 }
 
 export async function executeSwitchFlow(options: SwitchFlowOptions): Promise<void> {
-  const {
-    scope,
-    targetProfile,
-    applyFingerprint,
-    processExitTimeoutMs,
-    performSwitch,
-  } = options;
+  const { scope, targetProfile, applyFingerprint, processExitTimeoutMs, performSwitch } = options;
 
   let stage = 'close';
   try {

@@ -7,3 +7,6 @@ CHANGELOG.md
 /src/routeTree.gen.ts
 .agents/
 openspec/
+.agent/
+.claude/
+.codex

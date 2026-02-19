@@ -6,7 +6,11 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { getServerConfig } from '../../server-config';
-import { extractApiKeyToken, hasConfiguredApiKey, RequestHeaders } from '../../guards/api-key-auth.util';
+import {
+  extractApiKeyToken,
+  hasConfiguredApiKey,
+  RequestHeaders,
+} from '../../guards/api-key-auth.util';
 
 @Injectable()
 export class ProxyGuard implements CanActivate {

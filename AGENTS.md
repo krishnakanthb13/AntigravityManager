@@ -1,4 +1,3 @@
-
 # User Guide
 
 This document is a user-level guide for AI assistants working in this repository. It standardizes language, tool/script preferences, and development notes for the current tech stack.

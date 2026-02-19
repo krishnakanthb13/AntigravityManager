@@ -20,49 +20,42 @@ const CLAUDE_TO_GEMINI: Record<string, string> = {
   'claude-haiku-4-5-20251001': 'claude-sonnet-4-5',
 
   // OpenAI Protocol Mapping
-  'gpt-4': 'gemini-2.5-flash',
-  'gpt-4-turbo': 'gemini-2.5-flash',
-  'gpt-4-turbo-preview': 'gemini-2.5-flash',
-  'gpt-4-0125-preview': 'gemini-2.5-flash',
-  'gpt-4-1106-preview': 'gemini-2.5-flash',
-  'gpt-4-0613': 'gemini-2.5-flash',
+  'gpt-4': 'gemini-3-flash',
+  'gpt-4-turbo': 'gemini-3-flash',
+  'gpt-4-turbo-preview': 'gemini-3-flash',
+  'gpt-4-0125-preview': 'gemini-3-flash',
+  'gpt-4-1106-preview': 'gemini-3-flash',
+  'gpt-4-0613': 'gemini-3-flash',
 
-  'gpt-4o': 'gemini-2.5-flash',
-  'gpt-4o-2024-05-13': 'gemini-2.5-flash',
-  'gpt-4o-2024-08-06': 'gemini-2.5-flash',
+  'gpt-4o': 'gemini-3-flash',
+  'gpt-4o-2024-05-13': 'gemini-3-flash',
+  'gpt-4o-2024-08-06': 'gemini-3-flash',
 
-  'gpt-4o-mini': 'gemini-2.5-flash',
-  'gpt-4o-mini-2024-07-18': 'gemini-2.5-flash',
+  'gpt-4o-mini': 'gemini-3-flash',
+  'gpt-4o-mini-2024-07-18': 'gemini-3-flash',
 
-  'gpt-3.5-turbo': 'gemini-2.5-flash',
-  'gpt-3.5-turbo-16k': 'gemini-2.5-flash',
-  'gpt-3.5-turbo-0125': 'gemini-2.5-flash',
-  'gpt-3.5-turbo-1106': 'gemini-2.5-flash',
-  'gpt-3.5-turbo-0613': 'gemini-2.5-flash',
+  'gpt-3.5-turbo': 'gemini-3-flash',
+  'gpt-3.5-turbo-16k': 'gemini-3-flash',
+  'gpt-3.5-turbo-0125': 'gemini-3-flash',
+  'gpt-3.5-turbo-1106': 'gemini-3-flash',
+  'gpt-3.5-turbo-0613': 'gemini-3-flash',
 
   // Gemini Protocol Mapping
-  'gemini-2.5-flash-lite': 'gemini-2.5-flash',
-  'gemini-2.5-flash-thinking': 'gemini-2.5-flash-thinking',
+  'gemini-2.5-flash-lite': 'gemini-3-flash',
   'gemini-3-pro-low': 'gemini-3-pro-preview',
   'gemini-3-pro-high': 'gemini-3-pro-preview',
   'gemini-3-pro-preview': 'gemini-3-pro-preview',
   'gemini-3-pro': 'gemini-3-pro-preview',
-  'gemini-2.5-flash': 'gemini-2.5-flash',
+  'gemini-2.5-flash': 'gemini-3-flash',
   'gemini-3-flash': 'gemini-3-flash',
   'gemini-3-pro-image': 'gemini-3-pro-image',
-  'internal-background-task': 'gemini-2.5-flash',
+  'internal-background-task': 'gemini-3-flash',
 };
 
 const DYNAMIC_IMAGE_BASE_MODEL = 'gemini-3-pro-image';
 const DYNAMIC_IMAGE_RESOLUTIONS = ['', '-2k', '-4k'];
 const DYNAMIC_IMAGE_RATIOS = ['', '-1x1', '-4x3', '-3x4', '-16x9', '-9x16', '-21x9'];
-const EXTRA_DYNAMIC_MODELS = [
-  'gemini-2.0-flash-exp',
-  'gemini-2.5-flash',
-  'gemini-3-flash',
-  'gemini-3-pro-high',
-  'gemini-3-pro-low',
-];
+const EXTRA_DYNAMIC_MODELS = ['gemini-3-flash', 'gemini-3-pro-high', 'gemini-3-pro-low'];
 
 export const MODEL_LIST_CREATED_AT = 1770652800;
 
@@ -93,7 +86,7 @@ export function getAllDynamicModels(customMapping: Record<string, string> = {}):
     modelIds.add(modelId);
   }
 
-  return [...modelIds].sort();
+  return [...modelIds].filter((id) => !/gemini-[12](\.|$|-)/.test(id)).sort();
 }
 
 export function mapClaudeModelToGemini(input: string): string {

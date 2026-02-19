@@ -1,4 +1,14 @@
-import { Body, Controller, Get, HttpStatus, Inject, Param, Post, Res, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpStatus,
+  Inject,
+  Param,
+  Post,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { FastifyReply } from 'fastify';
 import { isEmpty } from 'lodash-es';
 import { Observable } from 'rxjs';
@@ -131,9 +141,7 @@ export class GeminiController {
     }
   }
 
-  private parseCombinedModelAction(
-    modelAction: string,
-  ): {
+  private parseCombinedModelAction(modelAction: string): {
     model: string;
     action: string;
   } | null {
@@ -288,5 +296,4 @@ export class GeminiController {
   private hasHijack(reply: FastifyReply): reply is FastifyReply & { hijack: () => void } {
     return typeof (reply as { hijack?: unknown }).hijack === 'function';
   }
-
 }

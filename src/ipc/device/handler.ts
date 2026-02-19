@@ -34,10 +34,8 @@ export interface DeviceHardeningSnapshot {
   lastFailureAt: number | null;
 }
 
-const UUID_V4_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-const SQM_ID_REGEX =
-  /^\{[0-9A-F]{8}-[0-9A-F]{4}-4[0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}\}$/;
+const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const SQM_ID_REGEX = /^\{[0-9A-F]{8}-[0-9A-F]{4}-4[0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}\}$/;
 
 interface DeviceProfileTemplate {
   machineIdPrefix: string;
@@ -183,7 +181,11 @@ function getTelemetryField(storage: Record<string, unknown>, key: string): strin
 }
 
 function ensureTelemetryObject(storage: Record<string, unknown>): Record<string, unknown> {
-  if (!storage.telemetry || typeof storage.telemetry !== 'object' || Array.isArray(storage.telemetry)) {
+  if (
+    !storage.telemetry ||
+    typeof storage.telemetry !== 'object' ||
+    Array.isArray(storage.telemetry)
+  ) {
     storage.telemetry = {};
   }
   return storage.telemetry as Record<string, unknown>;
@@ -272,9 +274,7 @@ function pickDeviceProfileTemplate(): DeviceProfileTemplate {
 }
 
 function deterministicUuidFromSeed(seed: string, namespace: string): string {
-  const hash = createHash('sha256')
-    .update(`${namespace}:${seed}`)
-    .digest();
+  const hash = createHash('sha256').update(`${namespace}:${seed}`).digest();
   const bytes = Buffer.from(hash.subarray(0, 16));
 
   bytes[6] = (bytes[6] & 0x0f) | 0x40;
@@ -463,10 +463,18 @@ function buildApplyError(
 ): Error {
   const message = original instanceof Error ? original.message : String(original);
   const wrapped = new Error(`device_apply_failed:${reason}:${stage}:${message}`);
-  (wrapped as Error & { deviceFailureReason?: DeviceApplyFailureReason; deviceFailureStage?: string })
-    .deviceFailureReason = reason;
-  (wrapped as Error & { deviceFailureReason?: DeviceApplyFailureReason; deviceFailureStage?: string })
-    .deviceFailureStage = stage;
+  (
+    wrapped as Error & {
+      deviceFailureReason?: DeviceApplyFailureReason;
+      deviceFailureStage?: string;
+    }
+  ).deviceFailureReason = reason;
+  (
+    wrapped as Error & {
+      deviceFailureReason?: DeviceApplyFailureReason;
+      deviceFailureStage?: string;
+    }
+  ).deviceFailureStage = stage;
   return wrapped;
 }
 
@@ -490,12 +498,8 @@ export function isIdentityProfileApplyEnabled(): boolean {
     return !isSafeModeActiveNow();
   }
   const normalized = raw.trim().toLowerCase();
-  const envEnabled = (
-    normalized !== '0' &&
-    normalized !== 'false' &&
-    normalized !== 'off' &&
-    normalized !== 'no'
-  );
+  const envEnabled =
+    normalized !== '0' && normalized !== 'false' && normalized !== 'off' && normalized !== 'no';
   if (!envEnabled) {
     return false;
   }
@@ -605,8 +609,9 @@ export function syncStateServiceMachineIdValue(serviceMachineId: string, dbPath?
       db = new Database(targetDbPath);
       db.pragma('busy_timeout = 3000');
       db.exec('CREATE TABLE IF NOT EXISTS ItemTable (key TEXT PRIMARY KEY, value TEXT);');
-      db.prepare("INSERT OR REPLACE INTO ItemTable (key, value) VALUES ('storage.serviceMachineId', ?)")
-        .run(serviceMachineId);
+      db.prepare(
+        "INSERT OR REPLACE INTO ItemTable (key, value) VALUES ('storage.serviceMachineId', ?)",
+      ).run(serviceMachineId);
       return;
     } catch (error) {
       if (isSqliteBusyError(error) && attempt < SQLITE_RETRY_COUNT) {

@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { DeviceProfileSchema, DeviceProfileVersionSchema, type DeviceProfile, type DeviceProfileVersion } from './account';
+import {
+  DeviceProfileSchema,
+  DeviceProfileVersionSchema,
+  type DeviceProfile,
+  type DeviceProfileVersion,
+} from './account';
 
 export interface CloudTokenData {
   access_token: string;

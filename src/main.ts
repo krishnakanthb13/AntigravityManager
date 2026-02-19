@@ -200,8 +200,41 @@ function createWindow({ startHidden }: { startHidden: boolean }) {
   logger.info('createWindow: setMainWindow done');
 
   if (inDevelopment && MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    logger.info(`createWindow: loading URL ${MAIN_WINDOW_VITE_DEV_SERVER_URL}`);
-    mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+    const devUrl = MAIN_WINDOW_VITE_DEV_SERVER_URL;
+    logger.info(`createWindow: waiting for Vite dev server at ${devUrl}`);
+
+    // Wait for Vite to be ready before loading
+    const waitForVite = async (url: string, maxRetries = 30, delay = 500) => {
+      for (let i = 0; i < maxRetries; i++) {
+        try {
+          const response = await fetch(url);
+          if (response.ok) {
+            logger.info(`createWindow: Vite server ready after ${i * delay}ms`);
+            return true;
+          }
+        } catch (e) {
+          // Server not ready yet
+        }
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+      logger.error('createWindow: Vite server did not start in time');
+      return false;
+    };
+
+    waitForVite(devUrl).then((ready) => {
+      if (mainWindow.isDestroyed()) {
+        logger.warn('createWindow: BrowserWindow destroyed before Vite URL load');
+        return;
+      }
+
+      if (ready) {
+        logger.info(`createWindow: loading URL ${devUrl}`);
+        mainWindow.loadURL(devUrl);
+      } else {
+        logger.error('createWindow: Failed to connect to Vite server, loading anyway');
+        mainWindow.loadURL(devUrl);
+      }
+    });
   } else {
     logger.info('createWindow: loading file index.html');
     mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));

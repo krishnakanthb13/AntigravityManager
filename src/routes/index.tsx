@@ -15,13 +15,7 @@ function HomePage() {
   );
 }
 
-function HomePageErrorBoundary({
-  error,
-  reset,
-}: {
-  error: unknown;
-  reset: () => void;
-}) {
+function HomePageErrorBoundary({ error, reset }: { error: unknown; reset: () => void }) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const hasShownToastRef = useRef(false);

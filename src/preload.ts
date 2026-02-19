@@ -32,7 +32,7 @@ try {
   // console.error('Preload: Failed to read config', e);
 }
 
-if (sentryEnabled) {
+if (sentryEnabled && process.env.NODE_ENV === 'production') {
   // Defer Sentry init to avoid blocking main thread during startup (white screen fix)
   setTimeout(() => {
     // console.log('[Preload] Initializing Sentry (Deferred)');

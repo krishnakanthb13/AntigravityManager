@@ -231,9 +231,7 @@ export class ProtobufUtils {
 
     const field4 = this.encodeLenDelimField(4, timestampMsg);
 
-    const combined = new Uint8Array(
-      field1.length + field2.length + field3.length + field4.length,
-    );
+    const combined = new Uint8Array(field1.length + field2.length + field3.length + field4.length);
     combined.set(field1, 0);
     combined.set(field2, field1.length);
     combined.set(field3, field1.length + field2.length);

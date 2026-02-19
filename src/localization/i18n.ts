@@ -286,6 +286,9 @@ i18n
               resetPrefix: 'reset',
               resetTime: 'Reset time',
               resetUnknown: 'Unknown',
+              gemini3Ready: 'Gemini 3 Ready',
+              groupGoogleGemini: 'Google Gemini',
+              groupAnthropicClaude: 'Anthropic Claude',
             },
             identity: {
               title: 'Identity Profile',
@@ -666,6 +669,9 @@ i18n
               resetPrefix: '重置',
               resetTime: '重置时间',
               resetUnknown: '未知',
+              gemini3Ready: 'Gemini 3 就绪',
+              groupGoogleGemini: 'Google Gemini',
+              groupAnthropicClaude: 'Anthropic Claude',
             },
             identity: {
               title: '身份配置',
@@ -1050,6 +1056,9 @@ i18n
               resetPrefix: 'Сброс',
               resetTime: 'Время сброса',
               resetUnknown: 'Неизвестно',
+              gemini3Ready: 'Gemini 3 готов',
+              groupGoogleGemini: 'Google Gemini',
+              groupAnthropicClaude: 'Anthropic Claude',
             },
             identity: {
               title: 'Профиль идентичности',

@@ -30,14 +30,12 @@ import {
 } from '../../../lib/antigravity/ModelMapping';
 import { getServerConfig } from '../../server-config';
 
-
-
 @Controller('v1')
 @UseGuards(ProxyGuard)
 export class ProxyController {
   private readonly logger = new Logger(ProxyController.name);
 
-  constructor(@Inject(ProxyService) private readonly proxyService: ProxyService) { }
+  constructor(@Inject(ProxyService) private readonly proxyService: ProxyService) {}
 
   @Get('models')
   listModels(@Res() res: FastifyReply) {
@@ -223,12 +221,13 @@ export class ProxyController {
           content:
             imageParts.length > 0
               ? [
-                {
-                  type: 'text',
-                  text: body.prompt ?? 'Please edit this image based on the provided instruction.',
-                },
-                ...imageParts,
-              ]
+                  {
+                    type: 'text',
+                    text:
+                      body.prompt ?? 'Please edit this image based on the provided instruction.',
+                  },
+                  ...imageParts,
+                ]
               : (body.prompt ?? 'Please edit this image based on the provided instruction.'),
         },
       ],
@@ -951,7 +950,10 @@ export class ProxyController {
       parts.push({ text: fallbackPrompt || 'Please generate an image based on this request.' });
     } else if (typeof userMessage.content === 'string') {
       parts.push({
-        text: userMessage.content || fallbackPrompt || 'Please generate an image based on this request.',
+        text:
+          userMessage.content ||
+          fallbackPrompt ||
+          'Please generate an image based on this request.',
       });
     } else {
       for (const block of userMessage.content) {

@@ -8,26 +8,32 @@ import { sentryVitePlugin } from '@sentry/vite-plugin';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
+  const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN || env.SENTRY_AUTH_TOKEN;
+  const shouldEnableSentry = mode === 'production' && Boolean(sentryAuthToken);
 
   return {
     plugins: [
-      sentryVitePlugin({
-        org: process.env.SENTRY_ORG || env.SENTRY_ORG,
-        project: process.env.SENTRY_PROJECT || env.SENTRY_PROJECT,
-        authToken: process.env.SENTRY_AUTH_TOKEN || env.SENTRY_AUTH_TOKEN,
-        release: {
-          name: `${process.env.npm_package_name}@${process.env.npm_package_version}`,
-        },
-        // Electron loads files from app://, so we need to normalize paths for Source Map matching
-        sourcemaps: {
-          // Rewrite the source paths to strip the Electron app:// protocol
-          rewriteSources: (source) => {
-            // Transform: app:///.vite/renderer/main_window/assets/index.js
-            // Into:      ~/.vite/renderer/main_window/assets/index.js
-            return source.replace(/^app:\/\/\//, '~/');
-          },
-        },
-      }),
+      ...(shouldEnableSentry
+        ? [
+            sentryVitePlugin({
+              org: process.env.SENTRY_ORG || env.SENTRY_ORG,
+              project: process.env.SENTRY_PROJECT || env.SENTRY_PROJECT,
+              authToken: sentryAuthToken,
+              release: {
+                name: `${process.env.npm_package_name}@${process.env.npm_package_version}`,
+              },
+              // Electron loads files from app://, so we need to normalize paths for Source Map matching
+              sourcemaps: {
+                // Rewrite the source paths to strip the Electron app:// protocol
+                rewriteSources: (source) => {
+                  // Transform: app:///.vite/renderer/main_window/assets/index.js
+                  // Into:      ~/.vite/renderer/main_window/assets/index.js
+                  return source.replace(/^app:\/\/\//, '~/');
+                },
+              },
+            }),
+        ]
+        : []),
       tanstackRouter({
         target: 'react',
         autoCodeSplitting: true,
@@ -40,6 +46,9 @@ export default defineConfig(({ mode }) => {
       }),
       codeInspectorPlugin({ bundler: 'vite' }),
     ],
+    optimizeDeps: {
+      entries: ['index.html'],
+    },
     define: {
       'process.env.SENTRY_DSN': JSON.stringify(process.env.SENTRY_DSN || env.SENTRY_DSN),
     },
