@@ -2,6 +2,18 @@
 
 # Changelog
 
+## [0.10.0](https://github.com/Draculabo/AntigravityManager/compare/v0.9.2...v0.10.0) (2026-02-19)
+
+### ✨ Features
+
+* Add powerful CLI for account management ([#115](https://github.com/Draculabo/AntigravityManager/issues/115)) ([b949764](https://github.com/Draculabo/AntigravityManager/commit/b9497648c6a7f50dd9b05a7f3d54ac95fa373349))
+* Implement provider groupings with account calculator and compre… ([#113](https://github.com/Draculabo/AntigravityManager/issues/113)) ([1e59a1c](https://github.com/Draculabo/AntigravityManager/commit/1e59a1c901d5feedb1089015060fc8c31b614d4d))
+
+### 🐛 Bug Fixes
+
+* refactor layout containers for proxy and settings pages to ensure full height and unified scrolling ([#102](https://github.com/Draculabo/AntigravityManager/issues/102)) ([caaaaf5](https://github.com/Draculabo/AntigravityManager/commit/caaaaf571864aeb2bd68dc271972fd197c999bd1))
+* **statusbar:** reduce process polling from 2s to 10s to prevent heap corruption crash ([#110](https://github.com/Draculabo/AntigravityManager/issues/110)) ([118fad5](https://github.com/Draculabo/AntigravityManager/commit/118fad567eeaac4e173b97d3eeb84e1f3edd4556))
+
 ## [0.9.2](https://github.com/Draculabo/AntigravityManager/compare/v0.9.1...v0.9.2) (2026-02-11)
 
 ### 🐛 Bug Fixes
